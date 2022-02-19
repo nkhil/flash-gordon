@@ -1,9 +1,56 @@
-import { ApolloServer } from 'apollo-server'
-import resolvers from './resolvers'
-import { typeDefs } from './type-definitions'
+import fastify from 'fastify'
+import builder from './schema'
+import { 
+  getGraphQLParameters, 
+  processRequest, 
+  renderGraphiQL, 
+  sendResult, 
+  shouldRenderGraphiQL, 
+} from 'graphql-helix'
 
-const server = new ApolloServer({ typeDefs, resolvers })
+const app = fastify()
 
-server.listen().then(({ url }) => {
-  console.log(`Server listening on ${url}`)
+app.route({
+  method: ['GET', 'POST'],
+  url: '/graphql',
+  async handler(req, res) {
+    const request = {
+      body: req.body,
+      headers: req.headers,
+      method: req.method,
+      query: req.query,
+    }
+
+    if (shouldRenderGraphiQL(request)) {
+      res.type('text/html')
+      res.send(renderGraphiQL({}))
+    } else {
+      const request = {
+        body: req.body,
+        headers: req.headers,
+        method: req.method,
+        query: req.query,
+      }
+      const {
+        operationName,
+        query,
+        variables,
+      } = getGraphQLParameters(request)
+      const result = await processRequest({
+        operationName,
+        query,
+        variables,
+        request,
+        schema: builder.toSchema({}),
+      })
+
+      sendResult(result, res.raw)
+    }
+  },
+})
+
+const port = process.env.PORT || 4000
+
+app.listen(port, () => {
+  console.log(`GraphQL server is running on port ${port}.`)
 })
