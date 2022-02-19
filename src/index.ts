@@ -1,5 +1,5 @@
 import fastify from 'fastify'
-import builder from './schema'
+import { schema } from './schema'
 import { 
   getGraphQLParameters, 
   processRequest, 
@@ -41,7 +41,7 @@ app.route({
         query,
         variables,
         request,
-        schema: builder.toSchema({}),
+        schema,
       })
 
       sendResult(result, res.raw)
